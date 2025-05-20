@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Whack a Cat 🐱</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <style>
+    body {
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      cursor: none;
+      margin: 0;
+      text-align: center;
+      position: relative;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      width: 100%;
+    }
+
+    .active {
+      display: flex;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .creature {
+      transition: all 0.3s ease;
+    }
+
+    .hole {
+      background: radial-gradient(ellipse at center, #9e5a0cf8 0%, #ab5c0cd8 100%);
+      box-shadow: inset 0 8px 12px rgba(0,0,0,0.5), 0 4px 6px rgba(0,0,0,0.3);
+      position: relative;
+      z-index: 1;
+    }
+
+    .hole::before {
+      content: "";
+      position: absolute;
+      bottom: -20px;
+      left: 0;
+      right: 0;
+      height: 20px;
+      background: linear-gradient(to top, #4b2e2e, transparent);
+      z-index: -1;
+    }
+
+    .hole.up .creature {
+      bottom: 20px;
+    }
+
+    .shake {
+      animation: shake 0.3s;
+    }
+
+    @keyframes shake {
+      0% { transform: translate(1px, 1px) rotate(0deg); }
+      20% { transform: translate(-1px, -2px) rotate(-1deg); }
+      40% { transform: translate(-3px, 0px) rotate(1deg); }
+      60% { transform: translate(3px, 2px) rotate(0deg); }
+      80% { transform: translate(1px, -1px) rotate(1deg); }
+      100% { transform: translate(-1px, 2px) rotate(-1deg); }
+    }
+
+    #gameBoard {
+      position: absolute;
+      bottom: 55px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    #homeScreen {
+      background-image: url('backg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    #gameScreen {
+      background-image: url('forest.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    #leaderboardModal {
+      position: fixed;
+      top: 10%;
+      right: 2.5rem;
+      background: white;
+      border: 3px solid #f472b6;
+      padding: 1.25rem;
+      border-radius: 1rem;
+      z-index: 999;
+      text-align: left;
+    }
+
+    #leaderboardModal h2 {
+  color: #ec4899;
+  font-size: 2rem;
+}
+
+#leaderboardModal h3 {
+  color: #ec4899;
+  font-size: 1.5rem;
+}
+
+#leaderboardModal ul {
+  font-size: 1.25rem;
+}
+
+
+    #leaderboardModal ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      color: #ec4899;
+    }
+
+    .top-buttons {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 50;
+    }
+
+    .top-buttons button {
+      font-size: 1.25rem;
+      padding: 0.25rem 0.5rem;
+      background-color: #f472b6;
+      color: white;
+      border-radius: 0.375rem;
+    }
+
+    .top-buttons button:hover,
+    .screen button:hover,
+    #leaderboardModal button:hover {
+      background-color: #ec4899;
+    }
+
+    .hammer {
+      width: 5rem;
+      position: absolute;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    .btn {
+      font-size: 1.5rem;
+      padding: 0.75rem 1.5rem;
+      margin: 0.25rem;
+      border-radius: 0.5rem;
+      background-color: #f472b6;
+      color: white;
+    }
+
+
+    .title {
+      font-size: 3.75rem;
+      color: #f4edf0;
+    }
+
+    .subtitle {
+      font-size: 2rem;
+      color: #ec4899;
+      margin-bottom: 1rem;
+    }
+
+    .paragraph {
+      color: #ec4899;
+      margin-bottom: 0.5rem;
+    }
+
+    .info {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #131415;
+    }
+
+    .final-score {
+      font-size: 2.25rem;
+      color: #d8e3f3;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+
+<body id="game">
+
+  <!-- Top Buttons -->
+  <div class="top-buttons">
+    <button onclick="toggleLeaderboard()">🏆</button>
+  </div>
+
+  <!-- Home Screen -->
+  <div id="homeScreen" class="screen active">
+    <h1 class="title">🐱 Whack a Cat 🐱</h1>
+    <input id="nicknameInput" type="text" placeholder="Enter your nickname" required
+      class="text-2xl px-6 py-4 my-4 border-2 border-pink-400 rounded-lg outline-none" />
+    <button class="btn" onclick="showScreen('howToPlay')">How to Play</button>
+    <button class="btn" onclick="handlePlay()">Play</button>
+    <button class="btn" onclick="window.close()">Exit</button>
+  </div>
+
+
+  <!-- Leaderboard Modal -->
+  <div id="leaderboardModal" class="hidden">
+    <h2><b><i>🏆 Leaderboard</i></b></h2>
+    <h3><B>Easy</B></h3>
+    <ul id="leaderboardListEasy"></ul>
+    <h3><B>Hard</B></h3>
+    <ul id="leaderboardListHard"></ul>
+    <button class="btn mt-4" onclick="toggleLeaderboard()">Close</button>
+  </div>
+
+  <!-- How to Play Screen -->
+  <div id="howToPlay" class="screen hidden">
+    <h1 class="subtitle"><B>How to Play</B></h1>
+    <p class="paragraph">Move your mouse to swing the hammer!</p>
+    <p class="paragraph">Click on the cats 🐱 to gain +5 points.</p>
+    <p class="paragraph">Don't hit the mice 🐭 or you’ll lose -6 points and a life.</p>
+    <p class="paragraph">The game ends if your score drops below -20 or lives reach 0.</p>
+    <p class="paragraph">You have 30 seconds for hard and 60 for easy to get the highest score!</p>
+    <h2 class="subtitle"><B>Enjoy!</B></h2>
+    <button class="btn" onclick="showScreen('homeScreen')">Back</button>
+  </div>
+
+  <!-- Difficulty Screen -->
+  <div id="difficultyScreen" class="screen hidden">
+    <h1 class="subtitle">Select Difficulty</h1>
+    <button class="btn" onclick="startGame('easy')">Easy</button>
+    <button class="btn" onclick="startGame('hard')">Hard</button>
+    <button class="btn" onclick="showScreen('homeScreen')">Exit</button>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="gameScreen" class="screen hidden">
+    <h1 class="title">Whack a Cat!</h1>
+    <div class="info">
+      Score: <span id="score">0</span> |
+      Time: <span id="timer">35</span>s |
+      Lives: <span id="lives">3</span>
+    </div>
+    <div id="gameBoard" class="grid grid-cols-5 gap-5"></div>
+    <h2 id="finalScore" class="final-score"></h2>
+    <button class="btn" onclick="showScreen('homeScreen')">Back to Home</button>
+  </div>
+
+  <!-- Hammer -->
+  <img src="hammer.png" id="hammer" class="hammer" />
+
+  <!-- Audio -->
+  <audio id="bgMusic" src="Carefree.mp3" loop></audio>
+  <audio id="hitCat" src="cat-meowing-type-02-293290.mp3"></audio>
+  <audio id="hitMouse" src="squeek.mp3"></audio>
+
+
+ <script>
+    const screens = {
+      homeScreen: document.getElementById("homeScreen"),
+      howToPlay: document.getElementById("howToPlay"),
+      difficultyScreen: document.getElementById("difficultyScreen"),
+      gameScreen: document.getElementById("gameScreen")
+    };
+
+    function showScreen(id) {
+      Object.entries(screens).forEach(([name, screen]) => {
+        if (name === id) {
+          screen.classList.remove("hidden");
+          screen.classList.add("flex");
+        } else {
+          screen.classList.add("hidden");
+          screen.classList.remove("flex");
+        }
+      });
+    }
+
+    function toggleLeaderboard() {
+      const modal = document.getElementById("leaderboardModal");
+      modal.classList.toggle("hidden");
+    }
+
+    // Hammer follows mouse
+    document.addEventListener('mousemove', e => {
+      hammer.style.left = e.pageX - 40 + 'px';
+      hammer.style.top = e.pageY - 40 + 'px';
+    });
+
+    document.addEventListener('mousedown', () => {
+      hammer.classList.add("hit");
+    });
+
+    document.addEventListener('mouseup', () => {
+      hammer.classList.remove("hit");
+    });
+
+    const scoreEl = document.getElementById("score");
+    const timerEl = document.getElementById("timer");
+    const livesEl = document.getElementById("lives");
+    const finalScoreEl = document.getElementById("finalScore");
+    const bgMusic = document.getElementById("bgMusic");
+    const hitCatSound = document.getElementById("hitCat");
+    const hitMouseSound = document.getElementById("hitMouse");
+    const hammer = document.getElementById("hammer");
+    const gameBoard = document.getElementById("gameBoard");
+
+    let score = 0;
+    let time = 60;
+    let lives = 3;
+    let gameInterval;
+    let countdown;
+    let difficulty = 'easy';
+    let playerNickname = '';
+
+    function handlePlay() {
+      const nickname = document.getElementById("nicknameInput").value.trim();
+      if (!nickname) {
+        alert("Please enter your nickname!");
+        return;
+      }
+      playerNickname = nickname;
+      showScreen('difficultyScreen');
+    }
+
+    function startGame(diff) {
+      difficulty = diff;
+      score = 0;
+      time = difficulty === 'easy' ? 60 : 30;
+      lives = 3;
+      scoreEl.textContent = score;
+      timerEl.textContent = time;
+      livesEl.textContent = lives;
+      finalScoreEl.textContent = "";
+      showScreen("gameScreen");
+      bgMusic.currentTime = 0;
+      bgMusic.play();
+      startCountdown();
+      startPopping();
+    }
+
+    function startCountdown() {
+      countdown = setInterval(() => {
+        time--;
+        timerEl.textContent = time;
+        if (time <= 0 || score < -20 || lives <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function randomTime(min, max) {
+      return Math.round(Math.random() * (max - min) + min);
+    }
+
+    function randomHole() {
+      const holes = [...document.querySelectorAll('.hole')];
+      const idx = Math.floor(Math.random() * holes.length);
+      return holes[idx];
+    }
+
+    function startPopping() {
+      gameBoard.innerHTML = "";
+      for (let i = 0; i < 10; i++) {
+        const hole = document.createElement("div");
+        hole.classList.add("hole", "relative", "w-32", "h-32", "bg-white", "rounded-full", "overflow-hidden", "border-4", "border-pink-400");
+        gameBoard.appendChild(hole);
+      }
+
+      function popUp() {
+        const hole = randomHole();
+        const isCat = Math.random() > 0.3;
+        const creature = document.createElement("img");
+        creature.src = isCat ? "cat.png" : "mouse.png";
+        creature.classList.add("creature", "absolute", "bottom-0", "left-1/2", "-translate-x-1/2", "w-24");
+
+        creature.addEventListener("click", () => {
+          if (isCat) {
+            score += 5;
+            hitCatSound.currentTime = 0;
+            hitCatSound.play();
+          } else {
+            score -= 6;
+            lives--;
+            hitMouseSound.currentTime = 0;
+            hitMouseSound.play();
+          }
+
+          scoreEl.textContent = score;
+          livesEl.textContent = lives;
+          creature.classList.add("shake");
+          setTimeout(() => creature.remove(), 200);
+
+          if (score < -20 || lives <= 0) {
+            endGame();
+          }
+        });
+
+        hole.appendChild(creature);
+        gsap.fromTo(creature, { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: "back.out(1.7)" });
+
+        setTimeout(() => {
+          gsap.to(creature, {
+            y: 100,
+            opacity: 0,
+            duration: 0.3,
+            ease: "back.in(1.7)",
+            onComplete: () => {
+              if (creature.parentNode) creature.remove();
+            }
+          });
+        }, 1000);
+
+        if (time > 0 && score > -20 && lives > 0) {
+          const nextTime = difficulty === 'easy' ? randomTime(1000, 1500) : randomTime(400, 800);
+          gameInterval = setTimeout(popUp, nextTime);
+        }
+      }
+
+      popUp();
+    }
+
+    function endGame() {
+      clearTimeout(gameInterval);
+      clearInterval(countdown);
+      bgMusic.pause();
+      finalScoreEl.textContent = `Final Score: ${score}`;
+      finalScoreEl.classList.remove("hidden");
+
+      
+      saveScore(playerNickname, score, difficulty);
+      showLeaderboard();
+      document.getElementById('leaderboardModal').classList.remove('hidden');
+    }
+
+    
+    saveScore(playerNickname, score, difficulty);
+    let leaderboard = [];
+
+    function saveScore(nickname, score, difficulty) {
+      const key = `leaderboard_${difficulty}`;
+      const existing = JSON.parse(localStorage.getItem(key)) || [];
+      existing.push({ nickname, score });
+      const sorted = existing.sort((a, b) => b.score - a.score).slice(0, 5);
+      localStorage.setItem(key, JSON.stringify(sorted));
+    }
+
+    function showLeaderboard() {
+      const easyList = document.getElementById("leaderboardListEasy");
+      const hardList = document.getElementById("leaderboardListHard");
+      easyList.innerHTML = '';
+      hardList.innerHTML = '';
+      const easyScores = JSON.parse(localStorage.getItem("leaderboard_easy")) || [];
+      const hardScores = JSON.parse(localStorage.getItem("leaderboard_hard")) || [];
+      easyScores.forEach(entry => {
+        const li = document.createElement("li");
+        li.textContent = `${entry.nickname}: ${entry.score}`;
+        easyList.appendChild(li);
+      });
+      hardScores.forEach(entry => {
+        const li = document.createElement("li");
+        li.textContent = `${entry.nickname}: ${entry.score}`;
+        hardList.appendChild(li);
+      });
+    }
+
+    window.onload = showLeaderboard;
+</script>
+
+</body>
+</html>
